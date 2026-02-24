@@ -1,33 +1,41 @@
-// lcd.h – Driver för HD44780 LCD i 4-bitarsläge
-// För Arduino Uno (ATmega328P)
-// Av: Faid, IOT25
-
 #ifndef LCD_H
 #define LCD_H
 
-#include <stdint.h>
 #include <avr/io.h>
+#include <stdint.h>
 
-// RS, EN och D4–D7 används
+// ---------------- PIN CONFIGURATION ----------------
+// Using 4-bit mode (RS, EN, D4–D7)
+
+// RS
 #define LCD_RS_PORT  PORTB
-#define LCD_RS_PIN   PB4    // Pin 12
+#define LCD_RS_DDR   DDRB
+#define LCD_RS_PIN   PB4
 
+// EN
 #define LCD_EN_PORT  PORTB
-#define LCD_EN_PIN   PB3    // Pin 11
+#define LCD_EN_DDR   DDRB
+#define LCD_EN_PIN   PB3
 
+// Data pins
 #define LCD_D4_PORT  PORTD
-#define LCD_D4_PIN   PD5    // Pin 5
+#define LCD_D4_DDR   DDRD
+#define LCD_D4_PIN   PD5
 
 #define LCD_D5_PORT  PORTD
-#define LCD_D5_PIN   PD4    // Pin 4
+#define LCD_D5_DDR   DDRD
+#define LCD_D5_PIN   PD4
 
 #define LCD_D6_PORT  PORTD
-#define LCD_D6_PIN   PD3    // Pin 3
+#define LCD_D6_DDR   DDRD
+#define LCD_D6_PIN   PD3
 
 #define LCD_D7_PORT  PORTD
-#define LCD_D7_PIN   PD2    // Pin 2
+#define LCD_D7_DDR   DDRD
+#define LCD_D7_PIN   PD2
 
-// Funktioner
+// ---------------- FUNCTION PROTOTYPES ----------------
+
 void lcd_init(void);
 void lcd_clear(void);
 void lcd_home(void);
