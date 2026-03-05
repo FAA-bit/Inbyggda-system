@@ -50,3 +50,6 @@ Pin 16     K    ─────── GND (bakgrundsbelysning -)
 | **D4-D7**   | Data (4-bitars överföring)         |
 | **A/K**     | Bakgrundsbelysning LED             |
 
+## Länken till wokwi
+https://wokwi.com/projects/455850496892063745
+
