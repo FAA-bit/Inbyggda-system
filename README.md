@@ -20,6 +20,7 @@
     Blinkande - Text blinkar
 
 ## Kopplingsschema: 
+~~~
     LCD Pin    Namn       Kopplas till Arduino
 ─────────────────────────────────────────
     Pin 1      VSS  ─────── GND
