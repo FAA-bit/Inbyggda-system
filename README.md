@@ -1,5 +1,5 @@
 # Inbyggda-system
-
+~~~
 ## Kunder & deras reklam 
 | Kund                             | Betalt   | Vikt | Vad de vill visa              |
 | -------------------------------- | -------- | ---- | ----------------------------- |
