@@ -20,7 +20,6 @@
     Blinkande - Text blinkar
 
 ## Kopplingsschema: 
-~~~
     LCD Pin    Namn       Kopplas till Arduino
 ─────────────────────────────────────────
     Pin 1      VSS  ─────── GND
@@ -51,14 +50,13 @@
 | **D4-D7**   | Data (4-bitars överföring)         |
 | **A/K**     | Bakgrundsbelysning LED             |
 
-
-## Länken till wokwi
-https://wokwi.com/projects/455850496892063745
-
 ### Fil struktur
-~~~
 main.c      — main loop, display logic
 lcd.c/h     — HD44780 4-bit driver (no libraries)
 ads.c/h     — customer/ad data, weighted random selection
 diagram.json — Wokwi wiring
+
+## Länken till wokwi
+https://wokwi.com/projects/455850496892063745
+
 
