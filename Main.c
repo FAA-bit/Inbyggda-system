@@ -1,161 +1,156 @@
 #include <avr/io.h>
-#include <avr/interrupt.h>
+#include <util/delay.h>
 #include <stdlib.h>
 #include <string.h>
-#include <util/delay.h>
+
 #include "lcd.h"
+#include "Ads.h"
 
-#define INTERVAL_MS 20000
+/* ------------------------------------------------------------------ */
+/*  Configuration                                                       */
+/* ------------------------------------------------------------------ */
 
-volatile unsigned long millis_counter = 0;
+#define F_CPU            16000000UL
+#define DISPLAY_DURATION_MS   20000UL  /* 20 seconds per ad */
+#define SCROLL_DELAY_MS         300UL  /* Speed of scroll */
+#define BLINK_ON_MS             600UL
+#define BLINK_OFF_MS            400UL
+#define LCD_COLS                   16
 
-ISR(TIMER0_COMPA_vect) {
-    millis_counter++;
+/* ------------------------------------------------------------------ */
+/*  Simple millisecond counter using Timer1                             */
+/* ------------------------------------------------------------------ */
+
+volatile uint32_t ms_ticks = 0;
+
+/* Call in main loop - not interrupt-driven to keep it simple */
+static void delay_ms_counted(uint16_t ms) {
+    for (uint16_t i = 0; i < ms; i++) {
+        _delay_ms(1);
+        ms_ticks++;
+    }
 }
 
-void timer0_init(void) {
-    TCCR0A = (1 << WGM01);
-    OCR0A = 249;
-    TCCR0B = (1 << CS01) | (1 << CS00);
-    TIMSK0 = (1 << OCIE0A);
-    sei();
+static uint32_t uptime_minutes(void) {
+    return ms_ticks / 60000UL;
 }
 
-unsigned long millis(void) {
-    return millis_counter;
+/* ------------------------------------------------------------------ */
+/*  Display helpers                                                     */
+/* ------------------------------------------------------------------ */
+
+/* Centre a string on a 16-char row */
+static void print_centred(const char *str, uint8_t row) {
+    uint8_t len = (uint8_t)strlen(str);
+    uint8_t col = (len < LCD_COLS) ? (LCD_COLS - len) / 2 : 0;
+    lcd_set_cursor(col, row);
+    lcd_print(str);
 }
 
-typedef struct {
-    const char *name;
-    int weight;
-    const char *messages[3];
-    int messageCount;
-    int type[3]; // 0 = text, 1 = scrolling, 2 = blinking
-} Customer;
-
-Customer customers[] = {
-
-    { "Harry", 5000,
-      { "Kop bil hos Harry",
-        "En god bilaffar",
-        "Harrys Bilar" },
-      3, {1,0,2} },
-
-    { "Farmor Anka", 3000,
-      { "Kop paj hos Farmor Anka",
-        "Skynda innan Morten atit alla pajer" },
-      2, {1,0} },
-
-    { "Petter", 1500,
-      { "Lat Petter bygga at dig",
-        "Bygga svart? Ring Petter" },
-      2, {1,0} },
-
-    { "Langben", 4000,
-      { "Mysterier? Ring Langben",
-        "Langben fixar biffen" },
-      2, {0,0} },
-
-    { "IOT Reklam", 1000,
-      { "Synas har? IOT:s Reklambyra" },
-      1, {0} }
-};
-
-#define CUSTOMER_COUNT (sizeof(customers)/sizeof(customers[0]))
-
-int lastCustomer = -1;
-
-int pickCustomer(void) {
-
-    int total = 0;
-    for (int i = 0; i < CUSTOMER_COUNT; i++)
-        total += customers[i].weight;
-
-    int chosen;
-
-    do {
-        int r = rand() % total;
-        int sum = 0;
-
-        for (int i = 0; i < CUSTOMER_COUNT; i++) {
-            sum += customers[i].weight;
-            if (r < sum) {
-                chosen = i;
-                break;
-            }
-        }
-
-    } while (chosen == lastCustomer);
-
-    lastCustomer = chosen;
-    return chosen;
+/* Show static ad for DISPLAY_DURATION_MS */
+static void show_static(const Ad *ad) {
+    lcd_clear();
+    print_centred(ad->line1, 0);
+    if (ad->line2) print_centred(ad->line2, 1);
+    delay_ms_counted(DISPLAY_DURATION_MS);
 }
 
-void showMessage(Customer *c) {
+/* Scroll line1 across row 0, show line2 static on row 1 */
+static void show_scroll(const Ad *ad) {
+    uint8_t  text_len = (uint8_t)strlen(ad->line1);
+    /* Pad with spaces so text enters from right and exits to left */
+    /* Total travel = LCD_COLS + text_len steps */
+    uint16_t total_steps = LCD_COLS + text_len;
+    uint32_t elapsed = 0;
 
     lcd_clear();
-    lcd_set_cursor(0, 0);
-    lcd_print(c->name);
+    if (ad->line2) print_centred(ad->line2, 1);
 
-    int index = rand() % c->messageCount;
-    const char *msg = c->messages[index];
-    int type = c->type[index];
+    char buf[LCD_COLS + 1];
 
-    // Special rule for Petter (even/odd minute simulation)
-    if (strcmp(c->name, "Petter") == 0) {
+    while (elapsed < DISPLAY_DURATION_MS) {
+        for (uint8_t step = 0; step < total_steps; step++) {
+            /* Build the 16-char window to display */
+            for (uint8_t col = 0; col < LCD_COLS; col++) {
+                /* Position in the virtual string (spaces + text + spaces) */
+                int16_t src = (int16_t)step - (int16_t)(LCD_COLS - 1) + (int16_t)col;
+                if (src < 0 || src >= text_len)
+                    buf[col] = ' ';
+                else
+                    buf[col] = ad->line1[src];
+            }
+            buf[LCD_COLS] = '\0';
+            lcd_set_cursor(0, 0);
+            lcd_print(buf);
 
-        unsigned long minute = millis() / 60000;
+            delay_ms_counted(SCROLL_DELAY_MS);
+            elapsed += SCROLL_DELAY_MS;
 
-        if (minute % 2 == 0) {
-            msg = c->messages[0];
-            type = 1;
-        } else {
-            msg = c->messages[1];
-            type = 0;
+            if (elapsed >= DISPLAY_DURATION_MS) return;
         }
-    }
-
-    lcd_set_cursor(1, 0);
-
-    switch (type) {
-        case 0:
-            lcd_print(msg);
-            break;
-
-        case 1:
-            lcd_scroll(msg, 300);
-            break;
-
-        case 2:
-            lcd_blink(msg, 6, 300);
-            break;
     }
 }
 
+/* Blink text on/off for DISPLAY_DURATION_MS */
+static void show_blink(const Ad *ad) {
+    uint32_t elapsed = 0;
+    uint8_t  visible = 1;
+
+    while (elapsed < DISPLAY_DURATION_MS) {
+        if (visible) {
+            lcd_clear();
+            print_centred(ad->line1, 0);
+            if (ad->line2) print_centred(ad->line2, 1);
+            delay_ms_counted(BLINK_ON_MS);
+            elapsed += BLINK_ON_MS;
+        } else {
+            lcd_clear();
+            delay_ms_counted(BLINK_OFF_MS);
+            elapsed += BLINK_OFF_MS;
+        }
+        visible = !visible;
+    }
+}
+
+/* Dispatch to the right display function */
+static void show_ad(const Ad *ad) {
+    switch (ad->mode) {
+        case MODE_SCROLL: show_scroll(ad); break;
+        case MODE_BLINK:  show_blink(ad);  break;
+        default:          show_static(ad); break;
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main                                                                */
+/* ------------------------------------------------------------------ */
+
 int main(void) {
-
-    timer0_init();
-    srand(millis());
-
     lcd_init();
 
-    lcd_print("The billboard");
-    lcd_set_cursor(1, 0);
-    lcd_print("Starting...");
-    _delay_ms(2000);
+    /* Seed rand with a compile-time value (no true RNG on Uno) */
+    srand(42);
 
-    unsigned long lastChange = 0;
+    /* Show a brief startup message */
+    lcd_clear();
+    lcd_set_cursor(2, 0);
+    lcd_print("IOT Reklambyr a");
+    lcd_set_cursor(4, 1);
+    lcd_print("Starting...");
+    delay_ms_counted(2000);
+
+    uint8_t last_customer = 0xFF; /* No previous customer */
 
     while (1) {
+        uint8_t  cust_idx  = pick_next_customer(last_customer);
+        const Customer *c  = &customers[cust_idx];
+        uint8_t  ad_idx    = pick_ad(c, uptime_minutes());
+        const Ad *ad       = &c->ads[ad_idx];
 
-        unsigned long now = millis();
+        show_ad(ad);
 
-        if (now - lastChange >= INTERVAL_MS) {
-
-            lastChange = now;
-
-            int id = pickCustomer();
-            showMessage(&customers[id]);
-        }
+        last_customer = cust_idx;
     }
+
+    return 0; /* Never reached */
 }
