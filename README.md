@@ -20,24 +20,24 @@
     Blinkande - Text blinkar
 
 ## Kopplingsschema: 
-LCD Pin    Namn       Kopplas till Arduino
+    LCD Pin    Namn       Kopplas till Arduino
 ─────────────────────────────────────────
-Pin 1      VSS  ─────── GND
-Pin 2      VDD  ─────── 5V
-Pin 3      VO   ─────── GND (eller potentiometer för kontrast)
-Pin 4      RS   ─────── Pin 12
-Pin 5      RW   ─────── GND (alltid skrivläge)
-Pin 6      E    ─────── Pin 11
-Pin 7      D0   ─────── (inte kopplad)
-Pin 8      D1   ─────── (inte kopplad)
-Pin 9      D2   ─────── (inte kopplad)
-Pin 10     D3   ─────── (inte kopplad)
-Pin 11     D4   ─────── Pin 5
-Pin 12     D5   ─────── Pin 4
-Pin 13     D6   ─────── Pin 3
-Pin 14     D7   ─────── Pin 2
-Pin 15     A    ─────── 5V (bakgrundsbelysning +)
-Pin 16     K    ─────── GND (bakgrundsbelysning -)
+    Pin 1      VSS  ─────── GND
+    Pin 2      VDD  ─────── 5V
+    Pin 3      VO   ─────── GND (eller potentiometer för kontrast)
+    Pin 4      RS   ─────── Pin 2
+    Pin 5      RW   ─────── GND (alltid skrivläge)
+    Pin 6      E    ─────── Pin 3
+    Pin 7      D0   ─────── (inte kopplad)
+    Pin 8      D1   ─────── (inte kopplad)
+    Pin 9      D2   ─────── (inte kopplad)
+    Pin 10     D3   ─────── (inte kopplad)
+    Pin 11     D4   ─────── Pin 4
+    Pin 12     D5   ─────── Pin 5
+    Pin 13     D6   ─────── Pin 6
+    Pin 14     D7   ─────── Pin 7
+    Pin 15     A    ─────── 5V (bakgrundsbelysning +)
+    Pin 16     K    ─────── GND (bakgrundsbelysning -)
 
 ## Vad varje pin gör: 
 | Signal      | Funktion                           |
@@ -50,6 +50,14 @@ Pin 16     K    ─────── GND (bakgrundsbelysning -)
 | **D4-D7**   | Data (4-bitars överföring)         |
 | **A/K**     | Bakgrundsbelysning LED             |
 
+
 ## Länken till wokwi
 https://wokwi.com/projects/455850496892063745
+
+### Fil struktur
+~~~
+main.c      — main loop, display logic
+lcd.c/h     — HD44780 4-bit driver (no libraries)
+ads.c/h     — customer/ad data, weighted random selection
+diagram.json — Wokwi wiring
 
