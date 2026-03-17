@@ -1,135 +1,113 @@
 #include "lcd.h"
+#include <avr/io.h>
 #include <util/delay.h>
 
-#define SET_PIN(port, pin)   (port |=  (1 << pin))
-#define CLR_PIN(port, pin)   (port &= ~(1 << pin))
+/* --- Pin definitions --- */
+#define LCD_PORT  PORTD
+#define LCD_DDR   DDRD
 
-static uint8_t convert_char(char c);
+#define LCD_RS    PD2
+#define LCD_E     PD3
+#define LCD_D4    PD4
+#define LCD_D5    PD5
+#define LCD_D6    PD6
+#define LCD_D7    PD7
 
-static void lcd_send_nibble(uint8_t nibble) {
+/* --- Internal state --- */
+static uint8_t _display_ctrl = 0;
 
-    if (nibble & 0x01) SET_PIN(LCD_D4_PORT, LCD_D4_PIN);
-    else CLR_PIN(LCD_D4_PORT, LCD_D4_PIN);
+/* --- Low-level helpers --- */
 
-    if (nibble & 0x02) SET_PIN(LCD_D5_PORT, LCD_D5_PIN);
-    else CLR_PIN(LCD_D5_PORT, LCD_D5_PIN);
-
-    if (nibble & 0x04) SET_PIN(LCD_D6_PORT, LCD_D6_PIN);
-    else CLR_PIN(LCD_D6_PORT, LCD_D6_PIN);
-
-    if (nibble & 0x08) SET_PIN(LCD_D7_PORT, LCD_D7_PIN);
-    else CLR_PIN(LCD_D7_PORT, LCD_D7_PIN);
-
-    SET_PIN(LCD_EN_PORT, LCD_EN_PIN);
+static void pulse_enable(void) {
+    LCD_PORT |=  (1 << LCD_E);
     _delay_us(1);
-    CLR_PIN(LCD_EN_PORT, LCD_EN_PIN);
-    _delay_us(100);
+    LCD_PORT &= ~(1 << LCD_E);
+    _delay_us(50);
 }
 
-static void lcd_send_byte(uint8_t byte, uint8_t isData) {
+static void write_nibble(uint8_t nibble) {
+    /* Clear data bits */
+    LCD_PORT &= ~((1<<LCD_D4)|(1<<LCD_D5)|(1<<LCD_D6)|(1<<LCD_D7));
+    if (nibble & 0x01) LCD_PORT |= (1 << LCD_D4);
+    if (nibble & 0x02) LCD_PORT |= (1 << LCD_D5);
+    if (nibble & 0x04) LCD_PORT |= (1 << LCD_D6);
+    if (nibble & 0x08) LCD_PORT |= (1 << LCD_D7);
+    pulse_enable();
+}
 
-    if (isData)
-        SET_PIN(LCD_RS_PORT, LCD_RS_PIN);
+static void send_byte(uint8_t byte, uint8_t is_data) {
+    if (is_data)
+        LCD_PORT |=  (1 << LCD_RS);
     else
-        CLR_PIN(LCD_RS_PORT, LCD_RS_PIN);
+        LCD_PORT &= ~(1 << LCD_RS);
 
-    lcd_send_nibble(byte >> 4);
-    lcd_send_nibble(byte & 0x0F);
+    write_nibble(byte >> 4);   /* High nibble first */
+    write_nibble(byte & 0x0F); /* Low nibble */
+    _delay_us(50);
 }
+
+static void send_cmd(uint8_t cmd) {
+    send_byte(cmd, 0);
+    if (cmd <= 0x03)
+        _delay_ms(2); /* Clear/home need extra time */
+}
+
+/* --- Public API --- */
 
 void lcd_init(void) {
+    /* Set all LCD pins as output */
+    LCD_DDR |= (1<<LCD_RS)|(1<<LCD_E)|(1<<LCD_D4)|(1<<LCD_D5)|(1<<LCD_D6)|(1<<LCD_D7);
+    LCD_PORT &= ~((1<<LCD_RS)|(1<<LCD_E)|(1<<LCD_D4)|(1<<LCD_D5)|(1<<LCD_D6)|(1<<LCD_D7));
 
-    LCD_RS_DDR |= (1 << LCD_RS_PIN);
-    LCD_EN_DDR |= (1 << LCD_EN_PIN);
+    _delay_ms(50); /* Wait for power-up */
 
-    LCD_D4_DDR |= (1 << LCD_D4_PIN);
-    LCD_D5_DDR |= (1 << LCD_D5_PIN);
-    LCD_D6_DDR |= (1 << LCD_D6_PIN);
-    LCD_D7_DDR |= (1 << LCD_D7_PIN);
+    /* Initialise in 4-bit mode per HD44780 datasheet */
+    write_nibble(0x03); _delay_ms(5);
+    write_nibble(0x03); _delay_us(150);
+    write_nibble(0x03); _delay_us(150);
+    write_nibble(0x02); /* Switch to 4-bit */
 
-    _delay_ms(50);
+    send_cmd(0x28); /* 4-bit, 2 lines, 5x8 font */
 
-    lcd_send_nibble(0x03);
-    _delay_ms(5);
-    lcd_send_nibble(0x03);
-    _delay_us(150);
-    lcd_send_nibble(0x03);
-    lcd_send_nibble(0x02);
+    _display_ctrl = 0x0C; /* Display on, cursor off, blink off */
+    send_cmd(_display_ctrl);
 
-    lcd_send_byte(0x28, 0);
-    lcd_send_byte(0x0C, 0);
-    lcd_send_byte(0x01, 0);
+    send_cmd(0x01); /* Clear display */
     _delay_ms(2);
-    lcd_send_byte(0x06, 0);
+
+    send_cmd(0x06); /* Entry mode: increment, no shift */
 }
 
 void lcd_clear(void) {
-    lcd_send_byte(0x01, 0);
+    send_cmd(0x01);
     _delay_ms(2);
 }
 
 void lcd_home(void) {
-    lcd_send_byte(0x02, 0);
+    send_cmd(0x02);
     _delay_ms(2);
 }
 
-void lcd_set_cursor(uint8_t row, uint8_t col) {
-    uint8_t addr = (row == 0) ? col : (0x40 + col);
-    lcd_send_byte(0x80 | addr, 0);
+void lcd_set_cursor(uint8_t col, uint8_t row) {
+    uint8_t row_offsets[] = {0x00, 0x40};
+    if (row > 1) row = 1;
+    if (col > 15) col = 15;
+    send_cmd(0x80 | (col + row_offsets[row]));
 }
 
-void lcd_print(const char *text) {
+void lcd_print_char(char c) {
+    send_byte((uint8_t)c, 1);
+}
 
-    uint8_t count = 0;
-
-    while (*text && count < 16) {
-        lcd_send_byte(convert_char(*text++), 1);
-        count++;
+void lcd_print(const char *str) {
+    while (*str) {
+        lcd_print_char(*str++);
     }
 }
 
-void lcd_scroll(const char *text, int delay_ms) {
-
-    char buffer[17] = {0};
-    int len = 0;
-
-    while (text[len]) len++;
-
-    for (int pos = 0; pos < len + 16; pos++) {
-
-        for (int i = 0; i < 16; i++) {
-            int idx = pos - 15 + i;
-            buffer[i] = (idx >= 0 && idx < len) ? text[idx] : ' ';
-        }
-
-        buffer[16] = '\0';
-
-        lcd_set_cursor(1, 0);
-        lcd_print(buffer);
-        _delay_ms(delay_ms);
-    }
-}
-
-void lcd_blink(const char *text, int times, int delay_ms) {
-
-    for (int i = 0; i < times; i++) {
-
-        lcd_set_cursor(1, 0);
-        lcd_print(text);
-        _delay_ms(delay_ms);
-
-        lcd_set_cursor(1, 0);
-        for (int j = 0; j < 16; j++)
-            lcd_send_byte(' ', 1);
-
-        _delay_ms(delay_ms);
-    }
-}
-
-static uint8_t convert_char(char c) {
-
-    if (c >= ' ' && c <= '~')
-        return c;
-
-    return '?';
-}
+void lcd_display_on(void)  { _display_ctrl |=  0x04; send_cmd(_display_ctrl); }
+void lcd_display_off(void) { _display_ctrl &= ~0x04; send_cmd(_display_ctrl); }
+void lcd_blink_on(void)    { _display_ctrl |=  0x01; send_cmd(_display_ctrl); }
+void lcd_blink_off(void)   { _display_ctrl &= ~0x01; send_cmd(_display_ctrl); }
+void lcd_cursor_on(void)   { _display_ctrl |=  0x02; send_cmd(_display_ctrl); }
+void lcd_cursor_off(void)  { _display_ctrl &= ~0x02; send_cmd(_display_ctrl); }
