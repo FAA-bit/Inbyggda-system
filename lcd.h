@@ -1,48 +1,30 @@
 #ifndef LCD_H
 #define LCD_H
 
-#include <avr/io.h>
 #include <stdint.h>
 
-// ---------------- PIN CONFIGURATION ----------------
-// Using 4-bit mode (RS, EN, D4–D7)
-
-// RS
-#define LCD_RS_PORT  PORTB
-#define LCD_RS_DDR   DDRB
-#define LCD_RS_PIN   PB4
-
-// EN
-#define LCD_EN_PORT  PORTB
-#define LCD_EN_DDR   DDRB
-#define LCD_EN_PIN   PB3
-
-// Data pins
-#define LCD_D4_PORT  PORTD
-#define LCD_D4_DDR   DDRD
-#define LCD_D4_PIN   PD5
-
-#define LCD_D5_PORT  PORTD
-#define LCD_D5_DDR   DDRD
-#define LCD_D5_PIN   PD4
-
-#define LCD_D6_PORT  PORTD
-#define LCD_D6_DDR   DDRD
-#define LCD_D6_PIN   PD3
-
-#define LCD_D7_PORT  PORTD
-#define LCD_D7_DDR   DDRD
-#define LCD_D7_PIN   PD2
-
-// ---------------- FUNCTION PROTOTYPES ----------------
+/* Pin mapping 
+   RS -> PD2
+   E  -> PD3
+   D4 -> PD4
+   D5 -> PD5
+   D6 -> PD6
+   D7 -> PD7
+*/
 
 void lcd_init(void);
 void lcd_clear(void);
 void lcd_home(void);
-void lcd_set_cursor(uint8_t row, uint8_t col);
-void lcd_print(const char* text);
-void lcd_print_second_row(const char* text);
-void lcd_scroll(const char *text, int delay_ms);
-void lcd_blink(const char *text, int times, int delay_ms);
+void lcd_set_cursor(uint8_t col, uint8_t row);
+void lcd_print(const char *str);
+void lcd_print_char(char c);
 
-#endif
+/* Display control */
+void lcd_display_on(void);
+void lcd_display_off(void);
+void lcd_blink_on(void);
+void lcd_blink_off(void);
+void lcd_cursor_on(void);
+void lcd_cursor_off(void);
+
+#endif /* LCD_H */
