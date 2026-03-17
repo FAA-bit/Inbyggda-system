@@ -56,6 +56,7 @@ lcd.c/h     — HD44780 4-bit driver (no libraries)
 ads.c/h     — customer/ad data, weighted random selection
 diagram.json — Wokwi wiring
 
+~~~
 ## Länken till wokwi
 https://wokwi.com/projects/455850496892063745
 
