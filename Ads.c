@@ -6,21 +6,21 @@
 /* ------------------------------------------------------------------ */
 
 static const Ad harry_ads[] = {
-    { "Kop bil hos",    "Harry",               MODE_SCROLL },
-    { "En god bilaffar", "(for Harry!)",        MODE_STATIC },
-    { "Hederlige",      "Harrys Bilar",        MODE_BLINK  },
+    { "Kop bil hos Harry", NULL,                MODE_SCROLL },
+    { "En god bilaffar",   "(for Harry!)",      MODE_STATIC },
+    { "Hederlige",         "Harrys Bilar",      MODE_BLINK  },
 };
 
 static const Ad farmor_ads[] = {
-    { "Kop paj hos",    "Farmor Anka",         MODE_SCROLL },
-    { "Skynda innan",   "Marten atit pajer",   MODE_STATIC },
+    { "Kop paj hos Farmor Anka",  NULL,         MODE_SCROLL },
+    { "Skynda innan",   "Marten atit pajer",    MODE_STATIC },
 };
 
 /* Petter: ad selection is time-based, not random.
    Index 0 = even minutes, index 1 = odd minutes. */
 static const Ad petter_ads[] = {
-    { "Lat Petter",     "bygga at dig",        MODE_SCROLL },
-    { "Bygga svart?",   "Ring Petter",         MODE_STATIC },
+    { "Lat Petter bygga at dig",  NULL,         MODE_SCROLL },
+    { "Bygga svart?",   "Ring Petter",          MODE_STATIC },
 };
 
 static const Ad langben_ads[] = {
@@ -29,14 +29,14 @@ static const Ad langben_ads[] = {
 };
 
 static const Ad iot_ads[] = {
-    { "Synas har?",     "IOT:s Reklambyra",   MODE_STATIC },
+    { "Synas har?",     "IOT:s Reklambyr a",   MODE_STATIC },
 };
 
 /* ------------------------------------------------------------------ */
 /*  Customer table                                                      */
 /*  weight = payment / 1000, rounded (min 1)                           */
 /*  Harry 5000->5, Langben 4000->4, Farmor 3000->3,                   */
-/*  Petter 1500->2, IOT 1000->1                                       */
+/*  Petter 1500->2 (rounded up to keep visible), IOT 1000->1          */
 /* ------------------------------------------------------------------ */
 
 const Customer customers[] = {
